@@ -1161,44 +1161,40 @@ async function submitEntry() {
   const month  = MONTHS[new Date(date).getMonth()];
   const entry  = { date, category:selCat, subCategory:selSub, amount:amt.toFixed(3), notes, month, ts:Date.now() };
 
-  const url = localStorage.getItem('bx_url');
-  if (url) {
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    document.getElementById('submitLbl').textContent = 'SENDING…';
-    try {
-      const params = new URLSearchParams({
-        action: 'add',
-        date: entry.date,
-        category: entry.category,
-        subCategory: entry.subCategory,
-        amount: entry.amount,
-        notes: entry.notes,
-        month: entry.month,
-        ts: entry.ts
-      });
-      await fetch(`${url}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
-      showToast('Saved to Google Sheets ✓');
-    } catch(e) {
-      showToast('Sync error — saved locally', true);
-    }
-    btn.disabled = false;
-    document.getElementById('submitLbl').textContent = 'ADD ' + selCat.toUpperCase() + ' ENTRY';
-  } else {
-    showToast('Entry saved locally');
-  }
-
+  // ✅ SAVE LOCALLY FIRST (instant)
   entries.unshift(entry);
   if (entries.length > 50) entries.length = 50;
   localStorage.setItem('bx_entries', JSON.stringify(entries));
   renderRecent();
 
-  // Reset form
+  // ✅ RESET FORM IMMEDIATELY
   document.getElementById('amtInput').value  = '';
   document.getElementById('notesInput').value = '';
   selSub = null;
   const sv = document.getElementById('subVal');
   sv.textContent = 'Tap to choose…'; sv.className = 'row-val muted';
+
+  // ✅ SHOW SUCCESS IMMEDIATELY
+  showToast('Entry saved ✓');
+
+  // ✅ SYNC TO SHEETS IN BACKGROUND
+  const url = localStorage.getItem('bx_url');
+  if (url) {
+    const params = new URLSearchParams({
+      action: 'add',
+      date: entry.date,
+      category: entry.category,
+      subCategory: entry.subCategory,
+      amount: entry.amount,
+      notes: entry.notes,
+      month: entry.month,
+      ts: entry.ts
+    });
+    
+    // Don't await - let it happen in background
+    fetch(`${url}?${params.toString()}`, { method: 'GET', mode: 'no-cors' })
+      .catch(err => console.error('Background sync failed:', err));
+  }
 }
 
 // ── RECENT ────────────────────────────────────────────────────
