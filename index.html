@@ -1225,21 +1225,26 @@ function renderRecent() {
 
 async function deleteEntry(i) {
   if (!confirm('Delete this entry?')) return;
+  
   const entry = entries[i];
-  const url = localStorage.getItem('bx_url');
-  if (url) {
-    try {
-      await fetch(`${url}?action=delete&ts=${entry.ts}`, {
-        method: 'GET', mode: 'no-cors'
-      });
-      showToast('Deleted from Google Sheets ✓');
-    } catch(e) {
-      showToast('Sheet delete failed — removed locally only', true);
-    }
-  }
+  
+  // ✅ DELETE LOCALLY FIRST (instant)
   entries.splice(i, 1);
   localStorage.setItem('bx_entries', JSON.stringify(entries));
   renderRecent();
+  
+  // ✅ SHOW SUCCESS IMMEDIATELY
+  showToast('Entry deleted ✓');
+  
+  // ✅ DELETE FROM SHEETS IN BACKGROUND
+  const url = localStorage.getItem('bx_url');
+  if (url) {
+    // Don't await - let it happen in background
+    fetch(`${url}?action=delete&ts=${entry.ts}`, {
+      method: 'GET', 
+      mode: 'no-cors'
+    }).catch(err => console.error('Background delete failed:', err));
+  }
 }
 
 // ── CONFIG ────────────────────────────────────────────────────
